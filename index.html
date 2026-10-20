@@ -118,24 +118,23 @@
       [0, 0, 0]
     ];
 
-    // 2. Alfa-kalay (Elmas Kübik) Konumları (8 Köşe + 6 Yüzey Merkezi + 4 İç Atom = 18 Atom)
+    // 2. Alfa-kalay (Elmas Kübik) Konumları (18 Atom)
     const alphaPositions = [
       // 8 Köşe
       [-2.5, -2.5, -2.5], [2.5, -2.5, -2.5], [-2.5, -2.5, 2.5], [2.5, -2.5, 2.5],
       [-2.5,  2.5, -2.5], [2.5,  2.5, -2.5], [-2.5,  2.5, 2.5], [2.5,  2.5, 2.5],
-      // Merkez (İlk grubun 9. atomuyla eşleşir)
+      // Merkez
       [0, 0, 0],
-      // Ek 6 Yüzey Merkezi Atomu
+      // 6 Yüzey Merkezi Atomu
       [0, -2.5, 0], [0, 2.5, 0],
       [-2.5, 0, 0], [2.5, 0, 0],
       [0, 0, -2.5], [0, 0, 2.5],
-      // Ek 3 İç Tetrahedral Atom
+      // 3 İç Tetrahedral Atom
       [-1.25, -1.25, -1.25], [1.25, 1.25, -1.25], [-1.25, 1.25, 1.25]
     ];
 
     const atoms = [];
 
-    // Atom Meshi Oluşturma
     alphaPositions.forEach((targetPos, i) => {
       const mat = new THREE.MeshStandardMaterial({
         color: 0xd4af37,
@@ -147,7 +146,6 @@
       if (i < betaPositions.length) {
         mesh.position.set(...betaPositions[i]);
       } else {
-        // Sonradan eklenen atomlar β fazında merkezde gizli durur
         mesh.position.set(0, 0, 0);
         mesh.scale.set(0, 0, 0);
       }
@@ -156,10 +154,29 @@
       atoms.push(mesh);
     });
 
-    // Bağlantı Çizgileri
-    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.6 });
-    const linesGroup = new THREE.Group();
-    crystalGroup.add(linesGroup);
+    // Kafes Çizgileri Bağlantı İndeksleri (Köşeler arası küp çizgileri + iç bağlar)
+    const linePairs = [
+      // Alt Yüzey Çerçevesi
+      [0, 1], [1, 3], [3, 2], [2, 0],
+      // Üst Yüzey Çerçevesi
+      [4, 5], [5, 7], [7, 6], [6, 4],
+      // Dikey Bağlar
+      [0, 4], [1, 5], [2, 6], [3, 7],
+      // Merkez ve İç Bağlar
+      [0, 8], [1, 8], [2, 8], [3, 8],
+      [4, 8], [5, 8], [6, 8], [7, 8]
+    ];
+
+    const lineGeometries = [];
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.7, linewidth: 2 });
+
+    linePairs.forEach(pair => {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+      const line = new THREE.Line(geom, lineMaterial);
+      crystalGroup.add(line);
+      lineGeometries.push({ geom, pair });
+    });
 
     const tempSlider = document.getElementById('tempSlider');
     const tempValue = document.getElementById('tempValue');
@@ -172,7 +189,7 @@
 
       const factor = temp < 13 ? Math.max(0, Math.min(1, (13 - temp) / 30)) : 0;
 
-      // Atomların konum, renk ve ölçek animasyonu
+      // Atom Pozisyonlarının ve Ölçeklerinin Güncellenmesi
       atoms.forEach((atom, index) => {
         const startPos = index < betaPositions.length ? betaPositions[index] : [0, 0, 0];
         const endPos = alphaPositions[index];
@@ -181,17 +198,27 @@
         atom.position.y = THREE.MathUtils.lerp(startPos[1], endPos[1], factor);
         atom.position.z = THREE.MathUtils.lerp(startPos[2], endPos[2], factor);
 
-        // Ek atomların görünme ölçeği
         if (index >= betaPositions.length) {
           const s = THREE.MathUtils.lerp(0, 1, factor);
           atom.scale.set(s, s, s);
         }
 
-        // Altın (β) -> Mor/Gri (α) renk geçişi
         atom.material.color.lerpColors(new THREE.Color(0xd4af37), new THREE.Color(0x8e44ad), factor);
       });
 
-      // UI Güncellemeleri ve Düzeltmeleri
+      // Dinamik Kafes Çizgilerinin Güncellenmesi
+      lineGeometries.forEach(({ geom, pair }) => {
+        const p1 = atoms[pair[0]].position;
+        const p2 = atoms[pair[1]].position;
+        const positions = new Float32Array([
+          p1.x, p1.y, p1.z,
+          p2.x, p2.y, p2.z
+        ]);
+        geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geom.attributes.position.needsUpdate = true;
+      });
+
+      // UI Güncellemeleri
       if (temp < 13) {
         phaseTitle.innerText = "α-kalay (Gri Kalay)";
         phaseInfo.style.borderLeftColor = "#8e44ad";
@@ -216,6 +243,9 @@
     }
 
     tempSlider.addEventListener('input', updateSimulation);
+
+    // İlk Çizim İçin Çağrı
+    updateSimulation();
 
     function animate() {
       requestAnimationFrame(animate);
