@@ -48,7 +48,6 @@
       font-size: 0.8rem;
     }
   </style>
-  <!-- Three.js ve OrbitControls Kütüphaneleri -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
@@ -66,7 +65,7 @@
     <div class="info-card" id="phaseInfo">
       <h2 id="phaseTitle">β-kalay (Beyaz Kalay)</h2>
       <p><strong>Kristal Yapı:</strong> Hacim Merkezli Tetragonal (BCT)</p>
-      <p><strong>Pardal Parametreleri:</strong> a = 5.831 Å, c = 3.181 Å</p>
+      <p><strong>Kafes Parametreleri:</strong> a = 5.831 Å, c = 3.181 Å</p>
       <p><strong>Yoğunluk:</strong> 7.29 g/cm³</p>
       <p><strong>Özellik:</strong> Metalik, sünek ve kararlı faz (T > 13 °C)</p>
     </div>
@@ -75,7 +74,7 @@
       <h2>Dönüşüm Bilgisi</h2>
       <p><strong>Kritik Sıcaklık:</strong> 13 °C</p>
       <p><strong>Hacim Değişimi:</strong> %27 Genleşme</p>
-      <p>13 °C'nin altında beyaz kalay yavaşça gevrekleşerek gri kalaya ($\alpha$-Sn) dönüşür.</p>
+      <p>13 °C'nin altında beyaz kalay yavaşça gevrekleşerek gri kalaya (α-Sn) dönüşür.</p>
     </div>
   </div>
 
@@ -86,13 +85,12 @@
   </div>
 
   <script>
-    // Sahne, Kamera ve Render Oluşturma
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a1a);
 
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(10, 8, 15);
+    camera.position.set(8, 6, 12);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -101,7 +99,6 @@
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // Işıklandırma
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
@@ -109,49 +106,61 @@
     dirLight1.position.set(10, 20, 10);
     scene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0x4fc3f7, 0.3);
-    dirLight2.position.set(-10, -10, -10);
-    scene.add(dirLight2);
-
-    // Atom Grubu
     const crystalGroup = new THREE.Group();
     scene.add(crystalGroup);
 
-    // Atom materyalleri
-    const betaMaterial = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.8 }); // Metalik Bronz/Beyaz
-    const alphaMaterial = new THREE.MeshStandardMaterial({ color: 0x8e44ad, roughness: 0.6, metalness: 0.2 }); // Mor/Gri Kalay
+    const sphereGeometry = new THREE.SphereGeometry(0.35, 32, 32);
 
-    const sphereGeometry = new THREE.SphereGeometry(0.6, 32, 32);
-
-    // β-kalay (BCT) bağıntılı konumlar ve α-kalay (Elmas/Kübik) konumları arasında geçiş yapısı
+    // 1. Beta-kalay (BCT) Konumları (8 Köşe + 1 Merkez = 9 Atom)
     const betaPositions = [
       [-2, -1, -2], [2, -1, -2], [-2, -1, 2], [2, -1, 2],
       [-2,  1, -2], [2,  1, -2], [-2,  1, 2], [2,  1, 2],
       [0, 0, 0]
     ];
 
+    // 2. Alfa-kalay (Elmas Kübik) Konumları (8 Köşe + 6 Yüzey Merkezi + 4 İç Atom = 18 Atom)
     const alphaPositions = [
+      // 8 Köşe
       [-2.5, -2.5, -2.5], [2.5, -2.5, -2.5], [-2.5, -2.5, 2.5], [2.5, -2.5, 2.5],
       [-2.5,  2.5, -2.5], [2.5,  2.5, -2.5], [-2.5,  2.5, 2.5], [2.5,  2.5, 2.5],
-      [0, 0, 0]
+      // Merkez (İlk grubun 9. atomuyla eşleşir)
+      [0, 0, 0],
+      // Ek 6 Yüzey Merkezi Atomu
+      [0, -2.5, 0], [0, 2.5, 0],
+      [-2.5, 0, 0], [2.5, 0, 0],
+      [0, 0, -2.5], [0, 0, 2.5],
+      // Ek 3 İç Tetrahedral Atom
+      [-1.25, -1.25, -1.25], [1.25, 1.25, -1.25], [-1.25, 1.25, 1.25]
     ];
 
     const atoms = [];
-    betaPositions.forEach((pos) => {
-      const mesh = new THREE.Mesh(sphereGeometry, betaMaterial.clone());
-      mesh.position.set(...pos);
+
+    // Atom Meshi Oluşturma
+    alphaPositions.forEach((targetPos, i) => {
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        roughness: 0.3,
+        metalness: 0.8
+      });
+      const mesh = new THREE.Mesh(sphereGeometry, mat);
+      
+      if (i < betaPositions.length) {
+        mesh.position.set(...betaPositions[i]);
+      } else {
+        // Sonradan eklenen atomlar β fazında merkezde gizli durur
+        mesh.position.set(0, 0, 0);
+        mesh.scale.set(0, 0, 0);
+      }
+      
       crystalGroup.add(mesh);
       atoms.push(mesh);
     });
 
-    // Izgara kafes çizgileri
-    const boxGeometry = new THREE.BoxGeometry(4, 2, 4);
-    const wireframeGeo = new THREE.WireframeGeometry(boxGeometry);
-    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4fc3f7, linewidth: 2 });
-    const wireframe = new THREE.LineSegments(wireframeGeo, lineMaterial);
-    crystalGroup.add(wireframe);
+    // Bağlantı Çizgileri
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.6 });
+    const linesGroup = new THREE.Group();
+    crystalGroup.add(linesGroup);
 
-    // Arayüz Elemanları
     const tempSlider = document.getElementById('tempSlider');
     const tempValue = document.getElementById('tempValue');
     const phaseTitle = document.getElementById('phaseTitle');
@@ -161,34 +170,35 @@
       const temp = parseFloat(tempSlider.value);
       tempValue.innerText = temp + " °C";
 
-      // 13 derece eşik noktası
-      const factor = temp < 13 ? Math.max(0, Math.min(1, (13 - temp) / 30)) : 0; 
+      const factor = temp < 13 ? Math.max(0, Math.min(1, (13 - temp) / 30)) : 0;
 
-      // Hacim genleşmesi (%27 hacim artışı -> ~%8-9 boyut artışı)
-      const scale = 1 + (factor * 0.27);
-      wireframe.scale.set(scale, scale * (1 + factor * 0.5), scale);
-
-      // Atom pozisyonları ve renk interpolasyonu
+      // Atomların konum, renk ve ölçek animasyonu
       atoms.forEach((atom, index) => {
-        const bPos = betaPositions[index];
-        const aPos = alphaPositions[index];
+        const startPos = index < betaPositions.length ? betaPositions[index] : [0, 0, 0];
+        const endPos = alphaPositions[index];
 
-        atom.position.x = THREE.MathUtils.lerp(bPos[0], aPos[0], factor);
-        atom.position.y = THREE.MathUtils.lerp(bPos[1], aPos[1], factor);
-        atom.position.z = THREE.MathUtils.lerp(bPos[2], aPos[2], factor);
+        atom.position.x = THREE.MathUtils.lerp(startPos[0], endPos[0], factor);
+        atom.position.y = THREE.MathUtils.lerp(startPos[1], endPos[1], factor);
+        atom.position.z = THREE.MathUtils.lerp(startPos[2], endPos[2], factor);
 
-        // Renk değişimi
+        // Ek atomların görünme ölçeği
+        if (index >= betaPositions.length) {
+          const s = THREE.MathUtils.lerp(0, 1, factor);
+          atom.scale.set(s, s, s);
+        }
+
+        // Altın (β) -> Mor/Gri (α) renk geçişi
         atom.material.color.lerpColors(new THREE.Color(0xd4af37), new THREE.Color(0x8e44ad), factor);
       });
 
-      // UI Güncelleme
+      // UI Güncellemeleri ve Düzeltmeleri
       if (temp < 13) {
         phaseTitle.innerText = "α-kalay (Gri Kalay)";
         phaseInfo.style.borderLeftColor = "#8e44ad";
         phaseInfo.innerHTML = `
           <h2>α-kalay (Gri Kalay)</h2>
           <p><strong>Kristal Yapı:</strong> Elmas Kübik (Diamond Cube)</p>
-          <p><strong>Pardal Parametresi:</strong> a = 6.489 Å</p>
+          <p><strong>Kafes Parametresi:</strong> a = 6.489 Å</p>
           <p><strong>Yoğunluk:</strong> 5.77 g/cm³</p>
           <p><strong>Özellik:</strong> Yarı iletken, gevrekleşmiş toz yapı (T < 13 °C)</p>
         `;
@@ -198,7 +208,7 @@
         phaseInfo.innerHTML = `
           <h2>β-kalay (Beyaz Kalay)</h2>
           <p><strong>Kristal Yapı:</strong> Hacim Merkezli Tetragonal (BCT)</p>
-          <p><strong>Pardal Parametreleri:</strong> a = 5.831 Å, c = 3.181 Å</p>
+          <p><strong>Kafes Parametreleri:</strong> a = 5.831 Å, c = 3.181 Å</p>
           <p><strong>Yoğunluk:</strong> 7.29 g/cm³</p>
           <p><strong>Özellik:</strong> Metalik, sünek ve kararlı faz (T > 13 °C)</p>
         `;
@@ -207,10 +217,9 @@
 
     tempSlider.addEventListener('input', updateSimulation);
 
-    // Animasyon Döngüsü
     function animate() {
       requestAnimationFrame(animate);
-      crystalGroup.rotation.y += 0.005;
+      crystalGroup.rotation.y += 0.004;
       controls.update();
       renderer.render(scene, camera);
     }
