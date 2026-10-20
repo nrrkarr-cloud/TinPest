@@ -1,250 +1,227 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalay Vebası (Tin Pest) Simülasyonu</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #121218;
-            color: #f0f0f0;
-            font-family: 'Consolas', 'Courier New', monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-        #canvas-container {
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            background-color: #1a1b26;
-        }
-        .controls {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(30, 32, 42, 0.85);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #3c4050;
-            backdrop-filter: blur(5px);
-            max-width: 380px;
-            pointer-events: auto;
-        }
-        h2 { margin: 0 0 10px 0; font-size: 16px; color: #fff; }
-        .temp-display { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
-        .cold { color: #eb4b4b; }
-        .warm { color: #4bcd78; }
-        .info { font-size: 12px; color: #aaa; margin-bottom: 6px; line-height: 1.4; }
-        .slider-container { margin-top: 10px; }
-        input[type=range] { width: 100%; cursor: pointer; }
-        button {
-            margin-top: 10px;
-            padding: 6px 12px;
-            background: #3b4252;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        button:hover { background: #4c566a; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kalay Vebası (Tin Pest) Allotropik Dönüşüm Simülasyonu</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #ffffff;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #sidebar {
+      width: 340px;
+      background: #252526;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+      z-index: 10;
+    }
+    h1 { font-size: 1.3rem; color: #4fc3f7; border-bottom: 1px solid #444; padding-bottom: 10px; }
+    .control-group { display: flex; flex-direction: column; gap: 8px; }
+    label { font-size: 0.9rem; color: #ccc; }
+    input[type=range] { width: 100%; cursor: pointer; }
+    .temp-display { font-size: 1.4rem; font-weight: bold; color: #ffca28; text-align: center; }
+    .info-card {
+      background: #33333d;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #4fc3f7;
+    }
+    .info-card h2 { font-size: 1.1rem; margin-bottom: 8px; }
+    .info-card p { font-size: 0.85rem; line-height: 1.4; color: #bbb; margin-bottom: 4px; }
+    #canvas-container { flex: 1; position: relative; }
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.7);
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+  </style>
+  <!-- Three.js ve OrbitControls Kütüphaneleri -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
-<div id="canvas-container">
-    <canvas id="simCanvas" width="900" height="600"></canvas>
-    <div class="controls">
-        <h2>Kalay Vebası Faz Dönüşümü</h2>
-        <div id="tempVal" class="temp-display warm">Sıcaklık: 20.0 °C</div>
-        <div class="info"><b>Kritik Eşik:</b> 13.2 °C</div>
-        <div class="info" id="phaseText"><b>Mevcut Faz:</b> Beta (β-Sn) - BCT Metalik Yapı</div>
-        <div class="info" id="densityText"><b>Yoğunluk:</b> 7.31 g/cm³</div>
-        <div class="info" id="progressText"><b>Dönüşüm Oranı:</b> %0.0</div>
-        
-        <div class="slider-container">
-            <label for="tempSlider" class="info">Sıcaklığı Ayarla (-30°C ile 40°C):</label>
-            <input type="range" id="tempSlider" min="-30" max="40" value="20" step="0.5">
-        </div>
-        <button onclick="resetSimulation()">Simülasyonu Sıfırla</button>
+  <div id="sidebar">
+    <h1>Kalay Allotrop Dönüşümü</h1>
+    
+    <div class="control-group">
+      <label for="tempSlider">Sıcaklık Ayarı (°C):</label>
+      <input type="range" id="tempSlider" min="-50" max="100" value="25" step="1">
+      <div class="temp-display" id="tempValue">25 °C</div>
     </div>
-</div>
 
-<script>
-const canvas = document.getElementById('simCanvas');
-const ctx = canvas.getContext('2d');
+    <div class="info-card" id="phaseInfo">
+      <h2 id="phaseTitle">β-kalay (Beyaz Kalay)</h2>
+      <p><strong>Kristal Yapı:</strong> Hacim Merkezli Tetragonal (BCT)</p>
+      <p><strong>Pardal Parametreleri:</strong> a = 5.831 Å, c = 3.181 Å</p>
+      <p><strong>Yoğunluk:</strong> 7.29 g/cm³</p>
+      <p><strong>Özellik:</strong> Metalik, sünek ve kararlı faz (T > 13 °C)</p>
+    </div>
 
-let temperature = 20.0;
-let atoms = [];
-const rows = 12;
-const cols = 12;
-const spacing = 24;
-const centerX = canvas.width / 2;
-const centerY = canvas.height / 2;
+    <div class="info-card">
+      <h2>Dönüşüm Bilgisi</h2>
+      <p><strong>Kritik Sıcaklık:</strong> 13 °C</p>
+      <p><strong>Hacim Değişimi:</strong> %27 Genleşme</p>
+      <p>13 °C'nin altında beyaz kalay yavaşça gevrekleşerek gri kalaya ($\alpha$-Sn) dönüşür.</p>
+    </div>
+  </div>
 
-class Atom {
-    constructor(x, y) {
-        this.baseX = x;
-        this.baseY = y;
-        this.x = x;
-        this.y = y;
-        this.vx = 0;
-        this.vy = 0;
-        this.phaseProgress = 0.0; // 0.0 (Beta) -> 1.0 (Alpha)
-        this.fractured = false;
+  <div id="canvas-container">
+    <div class="legend">
+      <p>💡 Fare ile döndürebilir ve yakınlaştırabilirsiniz.</p>
+    </div>
+  </div>
+
+  <script>
+    // Sahne, Kamera ve Render Oluşturma
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a);
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(10, 8, 15);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    // Işıklandırma
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight1.position.set(10, 20, 10);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0x4fc3f7, 0.3);
+    dirLight2.position.set(-10, -10, -10);
+    scene.add(dirLight2);
+
+    // Atom Grubu
+    const crystalGroup = new THREE.Group();
+    scene.add(crystalGroup);
+
+    // Atom materyalleri
+    const betaMaterial = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.8 }); // Metalik Bronz/Beyaz
+    const alphaMaterial = new THREE.MeshStandardMaterial({ color: 0x8e44ad, roughness: 0.6, metalness: 0.2 }); // Mor/Gri Kalay
+
+    const sphereGeometry = new THREE.SphereGeometry(0.6, 32, 32);
+
+    // β-kalay (BCT) bağıntılı konumlar ve α-kalay (Elmas/Kübik) konumları arasında geçiş yapısı
+    const betaPositions = [
+      [-2, -1, -2], [2, -1, -2], [-2, -1, 2], [2, -1, 2],
+      [-2,  1, -2], [2,  1, -2], [-2,  1, 2], [2,  1, 2],
+      [0, 0, 0]
+    ];
+
+    const alphaPositions = [
+      [-2.5, -2.5, -2.5], [2.5, -2.5, -2.5], [-2.5, -2.5, 2.5], [2.5, -2.5, 2.5],
+      [-2.5,  2.5, -2.5], [2.5,  2.5, -2.5], [-2.5,  2.5, 2.5], [2.5,  2.5, 2.5],
+      [0, 0, 0]
+    ];
+
+    const atoms = [];
+    betaPositions.forEach((pos) => {
+      const mesh = new THREE.Mesh(sphereGeometry, betaMaterial.clone());
+      mesh.position.set(...pos);
+      crystalGroup.add(mesh);
+      atoms.push(mesh);
+    });
+
+    // Izgara kafes çizgileri
+    const boxGeometry = new THREE.BoxGeometry(4, 2, 4);
+    const wireframeGeo = new THREE.WireframeGeometry(boxGeometry);
+    const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4fc3f7, linewidth: 2 });
+    const wireframe = new THREE.LineSegments(wireframeGeo, lineMaterial);
+    crystalGroup.add(wireframe);
+
+    // Arayüz Elemanları
+    const tempSlider = document.getElementById('tempSlider');
+    const tempValue = document.getElementById('tempValue');
+    const phaseTitle = document.getElementById('phaseTitle');
+    const phaseInfo = document.getElementById('phaseInfo');
+
+    function updateSimulation() {
+      const temp = parseFloat(tempSlider.value);
+      tempValue.innerText = temp + " °C";
+
+      // 13 derece eşik noktası
+      const factor = temp < 13 ? Math.max(0, Math.min(1, (13 - temp) / 30)) : 0; 
+
+      // Hacim genleşmesi (%27 hacim artışı -> ~%8-9 boyut artışı)
+      const scale = 1 + (factor * 0.27);
+      wireframe.scale.set(scale, scale * (1 + factor * 0.5), scale);
+
+      // Atom pozisyonları ve renk interpolasyonu
+      atoms.forEach((atom, index) => {
+        const bPos = betaPositions[index];
+        const aPos = alphaPositions[index];
+
+        atom.position.x = THREE.MathUtils.lerp(bPos[0], aPos[0], factor);
+        atom.position.y = THREE.MathUtils.lerp(bPos[1], aPos[1], factor);
+        atom.position.z = THREE.MathUtils.lerp(bPos[2], aPos[2], factor);
+
+        // Renk değişimi
+        atom.material.color.lerpColors(new THREE.Color(0xd4af37), new THREE.Color(0x8e44ad), factor);
+      });
+
+      // UI Güncelleme
+      if (temp < 13) {
+        phaseTitle.innerText = "α-kalay (Gri Kalay)";
+        phaseInfo.style.borderLeftColor = "#8e44ad";
+        phaseInfo.innerHTML = `
+          <h2>α-kalay (Gri Kalay)</h2>
+          <p><strong>Kristal Yapı:</strong> Elmas Kübik (Diamond Cube)</p>
+          <p><strong>Pardal Parametresi:</strong> a = 6.489 Å</p>
+          <p><strong>Yoğunluk:</strong> 5.77 g/cm³</p>
+          <p><strong>Özellik:</strong> Yarı iletken, gevrekleşmiş toz yapı (T < 13 °C)</p>
+        `;
+      } else {
+        phaseTitle.innerText = "β-kalay (Beyaz Kalay)";
+        phaseInfo.style.borderLeftColor = "#4fc3f7";
+        phaseInfo.innerHTML = `
+          <h2>β-kalay (Beyaz Kalay)</h2>
+          <p><strong>Kristal Yapı:</strong> Hacim Merkezli Tetragonal (BCT)</p>
+          <p><strong>Pardal Parametreleri:</strong> a = 5.831 Å, c = 3.181 Å</p>
+          <p><strong>Yoğunluk:</strong> 7.29 g/cm³</p>
+          <p><strong>Özellik:</strong> Metalik, sünek ve kararlı faz (T > 13 °C)</p>
+        `;
+      }
     }
 
-    update(temp, dt) {
-        // Phase transition mechanics below 13.2 C
-        if (temp < 13.2 && !this.fractured) {
-            let rate = (13.2 - temp) * 0.008;
-            this.phaseProgress = Math.min(1.0, this.phaseProgress + rate * dt);
-        } else if (temp >= 13.2 && !this.fractured) {
-            this.phaseProgress = Math.max(0.0, this.phaseProgress - 0.02 * dt);
-        }
+    tempSlider.addEventListener('input', updateSimulation);
 
-        // Volume expansion (~27% expansion)
-        let expansion = 1.0 + (this.phaseProgress * 0.27);
-        
-        // Thermal noise
-        let noise = Math.max(0.1, (temp + 40) * 0.015);
-        let nx = (Math.random() - 0.5) * noise;
-        let ny = (Math.random() - 0.5) * noise;
-
-        if (!this.fractured) {
-            let dx = this.baseX - centerX;
-            let dy = this.baseY - centerY;
-            this.x = centerX + dx * expansion + nx;
-            this.y = centerY + dy * expansion + ny;
-
-            // Crack propagation / pulverization
-            if (this.phaseProgress > 0.8 && Math.random() < 0.015) {
-                this.fractured = true;
-                let angle = Math.random() * Math.PI * 2;
-                let speed = Math.random() * 2 + 0.5;
-                this.vx = Math.cos(angle) * speed;
-                this.vy = Math.sin(angle) * speed;
-            }
-        } else {
-            // Brittle powder particle physics
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vy += 0.04; // mild gravity
-            if (this.y > canvas.height - 40) {
-                this.y = canvas.height - 40;
-                this.vx *= 0.5;
-                this.vy = 0;
-            }
-        }
+    // Animasyon Döngüsü
+    function animate() {
+      requestAnimationFrame(animate);
+      crystalGroup.rotation.y += 0.005;
+      controls.update();
+      renderer.render(scene, camera);
     }
 
-    draw() {
-        // Color transition: White Metallic -> Dark Gray Semiconductor
-        let r = Math.round(200 + (100 - 200) * this.phaseProgress);
-        let g = Math.round(220 + (105 - 220) * this.phaseProgress);
-        let b = Math.round(240 + (115 - 240) * this.phaseProgress);
-        
-        ctx.beginPath();
-        let radius = this.phaseProgress > 0.5 ? 6 : 4.5;
-        ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fill();
-        ctx.closePath();
-    }
-}
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
 
-function initLattice() {
-    atoms = [];
-    let startX = centerX - (cols * spacing) / 2;
-    let startY = centerY - (rows * spacing) / 2;
-
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            atoms.push(new Atom(startX + c * spacing, startY + r * spacing));
-        }
-    }
-}
-
-function resetSimulation() {
-    initLattice();
-    document.getElementById('tempSlider').value = 20;
-    temperature = 20.0;
-}
-
-document.getElementById('tempSlider').addEventListener('input', (e) => {
-    temperature = parseFloat(e.target.value);
-});
-
-let lastTime = performance.now();
-
-function animate(currentTime) {
-    let dt = (currentTime - lastTime) / 1000;
-    lastTime = currentTime;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Update & UI Texts
-    const tempDisp = document.getElementById('tempVal');
-    tempDisp.innerText = `Sıcaklık: ${temperature.toFixed(1)} °C`;
-    if (temperature < 13.2) {
-        tempDisp.className = 'temp-display cold';
-        document.getElementById('phaseText').innerHTML = '<b>Mevcut Faz:</b> Alfa (α-Sn) - Elmas Kubik (Gevrek)';
-        document.getElementById('densityText').innerHTML = '<b>Yoğunluk:</b> 5.77 g/cm³ (%27 Genleşme)';
-    } else {
-        tempDisp.className = 'temp-display warm';
-        document.getElementById('phaseText').innerHTML = '<b>Mevcut Faz:</b> Beta (β-Sn) - BCT Metalik Yapı';
-        document.getElementById('densityText').innerHTML = '<b>Yoğunluk:</b> 7.31 g/cm³ (Kararlı Metal)';
-    }
-
-    let totalProgress = 0;
-
-    // Draw Bonds
-    for (let i = 0; i < atoms.length; i++) {
-        let a1 = atoms[i];
-        totalProgress += a1.phaseProgress;
-        a1.update(temperature, dt);
-
-        if (a1.fractured) continue;
-
-        for (let j = i + 1; j < atoms.length; j++) {
-            let a2 = atoms[j];
-            if (a2.fractured) continue;
-
-            let dist = Math.hypot(a1.x - a2.x, a1.y - a2.y);
-            if (dist < 30) {
-                let alpha = 1.0 - ((a1.phaseProgress + a2.phaseProgress) / 2);
-                ctx.beginPath();
-                ctx.moveTo(a1.x, a1.y);
-                ctx.lineTo(a2.x, a2.y);
-                ctx.strokeStyle = `rgba(140, 160, 190, ${alpha * 0.4})`;
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
-        }
-    }
-
-    // Draw Atoms
-    atoms.forEach(atom => atom.draw());
-
-    let avgProgress = (totalProgress / atoms.length) * 100;
-    document.getElementById('progressText').innerHTML = `<b>Dönüşüm Oranı:</b> %${avgProgress.toFixed(1)}`;
-
-    requestAnimationFrame(animate);
-}
-
-initLattice();
-requestAnimationFrame(animate);
-</script>
-
+    animate();
+  </script>
 </body>
 </html>
